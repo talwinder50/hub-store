@@ -19,30 +19,11 @@ package crypto
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
-
-	"github.com/square/go-jose"
 )
 
 // file copied from github.com/square/go-jose.v2/jose-util/utils.go
 // it's in a main package, copied here as a loading key utility
-
-// parseJSONWebKey loads a JSONWebKey instance from json.
-func parseJSONWebKey(json []byte, pub bool) (*jose.JSONWebKey, error) {
-	var jwk jose.JSONWebKey
-	err := jwk.UnmarshalJSON(json)
-	if err != nil {
-		return nil, err
-	}
-	if !jwk.Valid() {
-		return nil, errors.New("invalid JWK key")
-	}
-	if jwk.IsPublic() != pub {
-		return nil, errors.New("priv/pub JWK key mismatch")
-	}
-	return &jwk, nil
-}
 
 // ParsePublicKey loads a public key from PEM/DER/JWK-encoded data.
 func ParsePublicKey(data []byte) (interface{}, error) {
@@ -54,22 +35,12 @@ func ParsePublicKey(data []byte) (interface{}, error) {
 	}
 
 	// Try to load SubjectPublicKeyInfo
-	pub, err0 := x509.ParsePKIXPublicKey(input)
-	if err0 == nil {
+	pub, err := x509.ParsePKIXPublicKey(input)
+	if err == nil {
 		return pub, nil
 	}
 
-	cert, err1 := x509.ParseCertificate(input)
-	if err1 == nil {
-		return cert.PublicKey, nil
-	}
-
-	jwk, err2 := parseJSONWebKey(data, true)
-	if err2 == nil {
-		return jwk, nil
-	}
-
-	return nil, fmt.Errorf("square/go-jose: parse error, got '%s', '%s' and '%s'", err0, err1, err2)
+	return nil, fmt.Errorf("square/go-jose: parse error: '%s'", err)
 }
 
 // ParsePrivateKey loads a private key from PEM/DER/JWK-encoded data.
@@ -82,25 +53,10 @@ func ParsePrivateKey(data []byte) (interface{}, error) {
 	}
 
 	var priv interface{}
-	priv, err0 := x509.ParsePKCS1PrivateKey(input)
-	if err0 == nil {
+	priv, err := x509.ParseECPrivateKey(input)
+	if err == nil {
 		return priv, nil
 	}
 
-	priv, err1 := x509.ParsePKCS8PrivateKey(input)
-	if err1 == nil {
-		return priv, nil
-	}
-
-	priv, err2 := x509.ParseECPrivateKey(input)
-	if err2 == nil {
-		return priv, nil
-	}
-
-	jwk, err3 := parseJSONWebKey(input, false)
-	if err3 == nil {
-		return jwk, nil
-	}
-
-	return nil, fmt.Errorf("square/go-jose: parse error, got '%s', '%s', '%s' and '%s'", err0, err1, err2, err3)
+	return nil, fmt.Errorf("square/go-jose: parse error: '%s'", err)
 }
