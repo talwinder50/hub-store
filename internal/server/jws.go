@@ -8,6 +8,7 @@ package server
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -17,6 +18,15 @@ import (
 )
 
 const (
+	// DidAccessTokenKey is the JWS Header key for the DID Access Token
+	DidAccessTokenKey = "did-access-token"
+
+	// DidAccessNonceKey is the JWS Header key for the client's nonce
+	DidAccessNonceKey = "did-requester-nonce"
+
+	// KidKey is the did fragment which is pointing to the public key in the DID doc
+	KidKey = "kid"
+
 	// HubIssuerID represents the ID of the hub (TODO: in the future this should be made configurable for each instance)
 	HubIssuerID = "did:hub:id"
 
@@ -88,4 +98,53 @@ func randomString() string {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+// validateJWSHeader will validate the JWS header.
+func validateJWSHeader(jws *jose.JSONWebSignature, publicKey *ecdsa.PublicKey) ([]byte, error) {
+	_, _, verifiedPayload, err := jws.VerifyMulti(publicKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Crypto [Warning]: could not verify JWS")
+	}
+
+	// validate nonce
+	nonce, ok := jws.Signatures[0].Header.ExtraHeaders[jose.HeaderKey(DidAccessNonceKey)]
+	if !ok || nonce == "" {
+		return nil, errors.New(fmt.Sprintf("Crypto [Warning]: Invalid token - missing nonce - %s", nonce))
+	}
+
+	return verifiedPayload, nil
+}
+
+// validateJWS will validate the did-access-token in the JWS message. It will create a new token if not found.
+// this call assumes validateJWSHeader() was called and returned a successful AuthenticationResult
+func validateJWS(jws *jose.JSONWebSignature, key *ecdsa.PrivateKey) (string, bool, error) {
+	kid := jws.Signatures[0].Header.KeyID
+
+	accessTokenJwe := jws.Signatures[0].Header.ExtraHeaders[jose.HeaderKey(DidAccessTokenKey)]
+	accessTknJweStr := fmt.Sprintf("%v", accessTokenJwe) // convert interface{} to string
+
+	// for existing access token, return it back as is along with IsNewToken=false
+	if accessTokenJwe != nil && accessTknJweStr != "" {
+		authJWT, err := jwt.ParseSigned(accessTknJweStr)
+		if err != nil {
+			return "", false, errors.Wrapf(err, "Crypto [Warning]: could not parse Access Token")
+		}
+
+		err = validateAccessToken(authJWT, key, kid)
+		if err != nil {
+			return "", false, err
+		}
+		return accessTknJweStr, false, nil
+	}
+
+	// else create new token, return it along with IsNewToken=true
+	nonce := jws.Signatures[0].Header.ExtraHeaders[jose.HeaderKey(DidAccessNonceKey)]
+
+	accessTknJweStr, err := createNewAccessToken(fmt.Sprintf("%v", nonce), kid, key)
+	if err != nil {
+		return "", false, errors.Wrapf(err, "Crypto [Warning]: could not create Access Token")
+	}
+
+	return accessTknJweStr, true, nil
 }
