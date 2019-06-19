@@ -5,6 +5,7 @@
 module github.com/trustbloc/hub-store
 
 require (
+	github.com/google/uuid v1.1.1
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/square/go-jose v0.0.0-20190531155156-ba5998847dec
