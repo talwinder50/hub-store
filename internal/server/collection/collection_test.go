@@ -222,3 +222,9 @@ func (m *MockCollectionStore) CommitQuery(oid string, f *collection.Filter, p *d
 	}
 	return nil, "", errors.New("revision not found in the collection store")
 }
+
+//CommitQuery mocks committing query operations
+func (m *MockCollectionStore) ObjectQuery(iface, context, tpe string, f *collection.Filter, p *db.Paging) (metadata []*models.Commit, token string, err error) {
+	//TODO : It will be address in the issue-36. Mock for Object query for service layer
+	return nil, "", errors.New("revision not found in the collection store")
+}
