@@ -15,8 +15,13 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.3.2
+	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/pkg/errors v0.8.1
+	github.com/sirupsen/logrus v1.4.2
+	github.com/spf13/viper v1.4.0
 	github.com/square/go-jose v0.0.0-20190531155156-ba5998847dec
 	github.com/stretchr/testify v1.3.0
 	github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc
 	github.com/thedevsaddam/gojsonq v2.2.2+incompatible
 )
+

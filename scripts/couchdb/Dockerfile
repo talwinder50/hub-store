@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-
 FROM couchdb:2.3.0
 LABEL maintainer=sk-dev-team
 
