@@ -22,6 +22,8 @@ func ServiceRequest(config *server.Config, request *models.Request) (*models.Res
 	switch request.Type {
 	case "WriteRequest":
 		return doWrite(config, request.Commit)
+	case "CommitQueryRequest":
+		return doCommitQuery(config, request.Query)
 	default:
 		return nil, badRequest("unsupported request type", request.Type)
 	}
@@ -56,6 +58,25 @@ func doWrite(config *server.Config, commit *models.Commit) (*models.Response, *m
 	return response, nil
 }
 
+func doCommitQuery(config *server.Config, req *models.CommitQueryRequest) (*models.Response, *models.ErrorResponse) {
+	commits, token, err := config.CollectionStore.CommitQuery(
+		req.ObjectID,
+		&collection.Filter{Revs: req.Revision},
+		&db.Paging{
+			Size:      config.PageSize,
+			SkipToken: req.SkipToken,
+		},
+	)
+	if err != nil {
+		msg := fmt.Sprintf("failed to execute CommitQuery against store: %s", err)
+		log.Error(msg)
+		return nil, serverError(msg)
+	}
+	cq := commitQueryResponse(commits, token)
+	response := &models.Response{CommitQueryResponse: cq}
+	return response, nil
+}
+
 // "bad_request" error response
 func badRequest(msg string, target string) *models.ErrorResponse {
 	return errResponse(msg, "bad_request", target)
@@ -75,6 +96,18 @@ func writeResponse(revs []string) *models.WriteResponse {
 			DeveloperMessageField: ""},
 		Revisions: revs}
 }
+
+func commitQueryResponse(commits []*models.Commit, token string) *models.CommitQueryResponse {
+	var context = "https://schema.identity.foundation/0.1"
+	return &models.CommitQueryResponse{
+		BaseResponse: models.BaseResponse{
+			AtContextField:        context,
+			AtType:                "CommitQueryResponse",
+			DeveloperMessageField: ""},
+		Commits:   commits,
+		SkipToken: token}
+}
+
 func errResponse(msg, errCode, target string) *models.ErrorResponse {
 	er := &models.ErrorResponse{}
 	er.ErrorCode = errCode

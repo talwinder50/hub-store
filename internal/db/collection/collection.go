@@ -20,9 +20,7 @@ type Store interface {
 	// single object.
 	//
 	// Pagination is achieved with a combination of paging options 'PageSize', 'SkipToken' and the 'token' return
-	// parameter.
-	//
-	// 'token' is an opaque token to be used to fetch a subsequent page, if there's any.
+	// parameter. 'token' is an opaque token to be used to fetch a subsequent page, if there's any.
 	CommitQuery(oid string, f *Filter, p *db.Paging) (commits []*models.Commit, token string, err error)
 }
 
