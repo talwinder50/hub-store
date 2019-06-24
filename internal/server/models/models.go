@@ -49,17 +49,33 @@ type Commit struct {
 
 // Request is the overall request of the user
 type Request struct {
-	Context  string  `json:"@context"`
-	Type     string  `json:"@type"`
-	Issuer   string  `json:"iss"`
-	Subject  string  `json:"sub"`
-	Audience string  `json:"aud"`
-	Commit   *Commit `json:"commit"`
+	Context  string              `json:"@context"`
+	Type     string              `json:"@type"`
+	Issuer   string              `json:"iss"`
+	Subject  string              `json:"sub"`
+	Audience string              `json:"aud"`
+	Commit   *Commit             `json:"commit"`
+	Query    *CommitQueryRequest `json:"query"`
+}
+
+// CommitQueryRequest defines the struct to send the query to the collection store
+type CommitQueryRequest struct {
+	ObjectID  string   `json:"object_id"`
+	Revision  []string `json:"revision"`
+	SkipToken string   `json:"skip_token,omitempty"`
 }
 
 // Response encapsulates different type of responses. For example: write Response CommitQuery Response etc
 type Response struct {
 	*WriteResponse
+	*CommitQueryResponse
+}
+
+// CommitQueryResponse commit query response
+type CommitQueryResponse struct {
+	BaseResponse
+	Commits   []*Commit `json:"commits"`
+	SkipToken string    `json:"skip_token,omitempty"`
 }
 
 // WriteResponse entails Base Response fields and revisions of commit along with optional skip token.
