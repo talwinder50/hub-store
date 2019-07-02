@@ -37,7 +37,7 @@ func StartCouchDB(dbname string) (address string, cleanup func()) {
 	}
 	cdb := &couchDB{
 		Name:          uuid.New().String(),
-		Image:         couchdbImageName(),
+		Image:         "repo.onetap.ca:8443/next/trustbloc/hub-store-couchdb:amd64-latest",
 		HostIP:        "127.0.0.1",
 		ContainerPort: docker.Port("5984/tcp"),
 		StartTimeout:  60 * time.Second,

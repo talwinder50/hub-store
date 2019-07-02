@@ -24,4 +24,3 @@ require (
 	github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc
 	github.com/thedevsaddam/gojsonq v2.2.2+incompatible
 )
-

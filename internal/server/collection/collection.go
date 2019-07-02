@@ -28,7 +28,6 @@ func ServiceRequest(config *server.Config, request *models.Request) (*models.Res
 		return doCommitQuery(config, request.CommitQueryRequest)
 	case "ObjectQueryRequest":
 		return doObjectQuery(config, request.ObjectQueryRequest)
-
 	default:
 		return nil, badRequest("unsupported request type", request.Type)
 	}

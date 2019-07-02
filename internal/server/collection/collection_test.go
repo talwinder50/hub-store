@@ -166,7 +166,6 @@ func TestObjectQueryError(t *testing.T) {
 	assert.Equal(t, "server_error", err.ErrorCode)
 	assert.Equal(t, "failed to execute ObjectQuery against store: revision not found in the collection store", err.DeveloperMessageField)
 }
-
 func TestCommitQueryError(t *testing.T) {
 	const pageSize = 1
 	collectionStore := createCollectionStore()
@@ -226,9 +225,7 @@ func createObjectQueryCollectionStore() *MockCollectionStore {
 	collectionStore := NewMockCollectionStore(nil)
 	collectionStore.MockWriteObjectQuery(commit)
 	return collectionStore
-
 }
-
 func encoding(input []byte) string {
 	return base64.StdEncoding.EncodeToString(input)
 }
@@ -361,7 +358,7 @@ func (m *MockCollectionStore) CommitQuery(oid string, f *collection.Filter, p *d
 	return nil, "", errors.New("revision not found in the collection store")
 }
 
-//Write mocks storing operations
+//MockWriteObjectQuery Write mocks storing operations
 func (m *MockCollectionStore) MockWriteObjectQuery(c *models.Commit) error {
 	if m.Err != nil {
 		return m.Err
@@ -396,6 +393,7 @@ func (m *MockCollectionStore) ObjectQuery(iface, context, tpe string, f *collect
 			paginatedObj := paginate(objects, skip, p.Size)
 			return paginatedObj, "", nil
 		}
+		return objects, "", nil
 
 	}
 	return nil, "", errors.New("revision not found in the collection store")

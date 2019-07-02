@@ -33,11 +33,6 @@ type Protected struct {
 	Meta           *Meta     `json:"meta,omitempty"`
 }
 
-// Payload gives the actual payload of the request which can be any object
-type Payload struct {
-	AnyObject map[string]interface{}
-}
-
 //Header defines the header parameters for Request
 type Header struct {
 	Revision string `json:"rev"`
