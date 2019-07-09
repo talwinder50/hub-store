@@ -17,10 +17,6 @@
 # all :               runs checks+unit-test
 
 
-#Release Parameters
-BASE_VERSION = 0.3.2
-IS_RELEASE = false
-
 GO_CMD ?= go
 export GO111MODULE=on
 
@@ -45,36 +41,42 @@ DOCKER_CMD         ?= docker
 CONTAINER_IDS = $(shell docker ps -a -q)
 DEV_IMAGES = $(shell docker images dev-* -q)
 
+GO_VER             = $(shell grep "GO_VER" .ci-properties |cut -d'=' -f2-)
+
+# Tool commands (overridable)
+DOCKER_CMD ?= docker
+GO_CMD     ?= go
+ALPINE_VER ?= 3.9
+
+# Namespace for the hub store
+DOCKER_OUTPUT_NS          ?= trustbloc
+HUB_STORE_IMAGE_NAME  ?= hub-store
+
 #couchdb image parameters
 #this couchdb image contains startup scripts that autorun and create all necessary db artifacts
-export HUB_STORE_COUCHDB_IMAGE ?= repo.onetap.ca:$(ARTIFACTORY_PORT)/next/trustbloc/hub-store-couchdb
-export HUB_STORE_COUCHDB_IMAGE_TAG ?= $(PROJECT_VERSION)
+export HUB_STORE_COUCHDB_IMAGE ?= trustbloc/hub-store-couchdb
 
-docker:
-	GOOS=linux go build -o ./build/hub-store cmd/hub-store/main.go
-	@docker build --no-cache --tag $(HUB_STORE_COUCHDB_IMAGE):$(ARCH)-$(HUB_STORE_COUCHDB_IMAGE_TAG) \
-	--tag $(HUB_STORE_COUCHDB_IMAGE):$(ARCH)-latest ./scripts/couchdb
-
-ifdef JENKINS_URL
-ifndef JENKINS_VERIFY
-    docker push $(HUB_STORE_COUCHDB_IMAGE):$(ARCH)-$(HUB_STORE_COUCHDB_IMAGE_TAG)
-endif
-endif
-
+export PKGS=`go list github.com/trustbloc/hub-store/... `
 
 build:
 	go build -o bin/hubstore cmd/hub-store/main.go
+
 
 //TODO: Pull the couchdb image directly , dont build the image to run the test
 docker:
 	@docker build --no-cache --tag $(HUB_STORE_COUCHDB_IMAGE) \
 	./scripts/couchdb
 
-unit-test:depend docker
+unit-test:docker
 	@scripts/unit.sh
 //TODO : Separate the couchdb test (which are dependant on external dependencies ) as integration test
 unit-test: generate-test-keys docker
 	go test -count=1 $(PKGS) -timeout=10m -coverprofile=coverage.txt -covermode=atomic ./...
+
+//TODO : Separate the couchdb test (which are dependant on external dependencies ) as integration test
+unit-test: docker
+	go test -count=1 $(PKGS) -timeout=10m -coverprofile=coverage.txt -covermode=atomic ./...
+
 
 license:
 	@scripts/check_license.sh
@@ -95,4 +97,30 @@ generate-test-keys: clean
 clean:
 	rm -Rf ./test
 
-all: checks unit-test
+all: checks unit-test bddtests
+
+hub-store:
+	@echo "Building hub-store"
+	@mkdir -p ./.build/bin
+	@go build -o ./.build/bin/hub-store cmd/hub-store/main.go
+
+hubstore-docker: hub-store
+	@docker build -f ./images/hub-store/Dockerfile --no-cache -t $(DOCKER_OUTPUT_NS)/$(HUB_STORE_IMAGE_NAME):latest \
+	--build-arg GO_VER=$(GO_VER) \
+	--build-arg ALPINE_VER=$(ALPINE_VER) \
+	--build-arg GO_TAGS=$(GO_TAGS) \
+	--build-arg GOPROXY=$(GOPROXY) .
+
+bddtests: clean checks generate-test-keys hubstore-docker
+	@scripts/integration.sh
+
+generate-test-keys: clean
+	@mkdir -p -p test/bddtests/fixtures/keys/tls
+	@docker run -i --rm \
+		-v $(abspath .):/opt/go/src/github.com/trustbloc/hub-store \
+		--entrypoint "/opt/go/src/github.com/trustbloc/hub-store/scripts/generate_test_keys.sh" \
+		frapsoft/openssl
+clean:
+	rm -Rf ./.build
+	rm -Rf ./test/bddtests/docker-compose.log
+	rm -Rf ./test/bddtests/fixtures/keys/tls

@@ -12,7 +12,7 @@ set -e
 
 # Packages to exclude
 PKGS=`go list github.com/trustbloc/hub-store/... 2> /dev/null | \
-                                                  grep -v /tests | \
+                                                  grep -v /test | \
                                                   grep -v /vendor/`
 echo "Running unit tests ..."
 go test -count=1 -cover $PKGS -timeout=10m

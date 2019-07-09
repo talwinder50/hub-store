@@ -28,7 +28,7 @@ func TestParseKey(t *testing.T) {
 			Name:    "Success case for private key",
 			Success: true,
 			isPriv:  true,
-			keyPath: "../../test/fixtures/keys/server/ec-key.pem",
+			keyPath: "../../test/bddtests/fixtures/keys/server/ec-key.pem",
 		},
 		{
 			Name:       "Fail Parse invalid private key format case",
@@ -46,13 +46,13 @@ func TestParseKey(t *testing.T) {
 			Name:    "Success case for public key",
 			Success: true,
 			isPriv:  false,
-			keyPath: "../../test/fixtures/keys/server/ec-pubKey.pem",
+			keyPath: "../../test/bddtests/fixtures/keys/server/ec-pubKey.pem",
 		},
 		{
 			Name:    "Success case for public cert",
 			Success: true,
 			isPriv:  false,
-			keyPath: "../../test/fixtures/keys/server/ec-pubCert.pem",
+			keyPath: "../../test/bddtests/fixtures/keys/server/ec-pubCert.pem",
 		},
 		{
 			Name:       "Fail Parse invalid public key case",
