@@ -16,73 +16,119 @@ const (
 
 // Meta provides the basic info about the payload
 type Meta struct {
-	Name string `json:"name,omitempty"`
+	Name string
 }
 
 // Protected gives the commit info and it is signature protected
 type Protected struct {
-	Interface      string    `json:"interface"`
-	Context        string    `json:"context"`
-	Type           string    `json:"type"`
-	Operation      Operation `json:"operation"`
-	CommittedAt    string    `json:"committed_at"`
-	CommitStrategy string    `json:"commit_strategy"`
-	Sub            string    `json:"sub"`
-	Kid            string    `json:"kid"`
-	ObjectID       string    `json:"object_id,omitempty"`
-	Meta           *Meta     `json:"meta,omitempty"`
+	Interface      string
+	Context        string
+	Type           string
+	Operation      Operation
+	CommittedAt    string
+	CommitStrategy string
+	Sub            string
+	Kid            string
+	ObjectID       string
+	Meta           *Meta
 }
 
 //Header defines the header parameters for Request
 type Header struct {
-	Revision string `json:"rev"`
-	Iss      string `json:"iss"`
+	Revision string
+	Iss      string
+}
+
+//Request defines the request structure for hub-store
+type Request struct {
+	Context  string
+	Type     string
+	Issuer   string
+	Subject  string
+	Audience string
+	*CommitRequest
+	*CommitQuery
+	*ObjectQuery
 }
 
 // Commit gives the actual user data
 type Commit struct {
-	Protected string  `json:"protected"`
-	Header    *Header `json:"header"`
-	Payload   string  `json:"payload"`
-	Signature string  `json:"signature"`
+	Protected string
+	Header    *Header
+	Payload   string
+	Signature string
 }
 
-// Request is the overall request of the user
-type Request struct {
-	Context  string              `json:"@context"`
-	Type     string              `json:"@type"`
-	Issuer   string              `json:"iss"`
-	Subject  string              `json:"sub"`
-	Audience string              `json:"aud"`
-	Commit   *Commit             `json:"commit"`
-	Query    *CommitQueryRequest `json:"query"`
+//CommitRequest defines the write commit struct of a request
+type CommitRequest struct {
+	Commit *Commit
+}
+
+// CommitQuery defines the query struct for commit query
+type CommitQuery struct {
+	CommitQueryRequest *CommitQueryRequest
+}
+
+//ObjectQuery defines the query struct for object query
+type ObjectQuery struct {
+	ObjectQueryRequest *ObjectQueryRequest
 }
 
 // CommitQueryRequest defines the struct to send the query to the collection store
 type CommitQueryRequest struct {
-	ObjectID  string   `json:"object_id"`
-	Revision  []string `json:"revision"`
-	SkipToken string   `json:"skip_token,omitempty"`
+	ObjectID  string
+	Revision  []string
+	SkipToken string
+}
+
+// ObjectQueryRequest defines the struct to send object query to collection store
+type ObjectQueryRequest struct {
+	Context   string
+	Filters   []*Filter
+	Interface string
+	ObjectID  []string
+	SkipToken string
+	Type      string
+}
+
+// ObjectMetadata defines the object metadata structure which will serve as response for object query
+type ObjectMetadata struct {
+	CommitStrategy string
+	Context        string
+	CreatedAt      string
+	CreatedBy      string
+	ID             string
+	Interface      string
+	Sub            string
+	Type           string
 }
 
 // Response encapsulates different type of responses. For example: write Response CommitQuery Response etc
 type Response struct {
 	*WriteResponse
 	*CommitQueryResponse
+	*ObjectQueryResponse
 }
 
 // CommitQueryResponse commit query response
 type CommitQueryResponse struct {
 	BaseResponse
-	Commits   []*Commit `json:"commits"`
-	SkipToken string    `json:"skip_token,omitempty"`
+	Commits   []*Commit
+	SkipToken string
 }
 
 // WriteResponse entails Base Response fields and revisions of commit along with optional skip token.
 type WriteResponse struct {
 	BaseResponse
-	Revisions []string `json:"revisions"`
-	SkipToken string   `json:"skip_token,omitempty"`
+	Revisions []string
+	SkipToken string
+}
+
+// ObjectQueryResponse defines the response struct for  the object query
+type ObjectQueryResponse struct {
+	BaseResponse
+	Objects   []*ObjectMetadata
+	SkipToken string
 }
 
 // BaseResponse defines the common parameters used by all different types of response.
@@ -94,16 +140,16 @@ type BaseResponse struct {
 
 // Filter defines the parameters for applying filters while doing commit query on the collections store
 type Filter struct {
-	Field string `json:"field"`
-	Type  string `json:"type"`
-	Value string `json:"value"`
+	Field string
+	Type  string
+	Value string
 }
 
 // ErrorResponse defines the struct to handle errors
 type ErrorResponse struct {
 	DeveloperMessageField string
-	ErrorCode             string `json:"error_code"`
-	ErrorURL              string `json:"error_url,omitempty"`
-	Target                string `json:"target"`
-	UserMessage           string `json:"user_message,omitempty"`
+	ErrorCode             string
+	ErrorURL              string
+	Target                string
+	UserMessage           string
 }

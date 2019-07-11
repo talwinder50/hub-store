@@ -8,7 +8,7 @@ package internal
 
 import (
 	"encoding/base64"
-	"fmt"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,11 +31,14 @@ func TestObjectIdOfWithCreateCommit(t *testing.T) {
 func TestObjectIdOfWithUpdateCommit(t *testing.T) {
 	const rev = "abc123"
 	commit := &models.Commit{}
-	protected := fmt.Sprintf(`{
-			"operation": "update",
-            "object_id" :  "%s"
-		}`, rev )
-	commit.Protected = encoding([]byte(protected))
+	protected := &models.Protected{
+		Operation: "update",
+		ObjectID:  rev,
+	}
+
+	protectedBytes, err := json.Marshal(protected)
+	assert.Nil(t, err)
+	commit.Protected = encoding(protectedBytes)
 	commit.Header = &models.Header{Revision: "999999999"}
 	oid, err := ObjectID(commit)
 	assert.Nil(t, err)

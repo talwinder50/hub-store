@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
 	"strings"
 	"testing"
 	"time"
@@ -31,17 +32,17 @@ var s collection.Store
 func TestMain(m *testing.M) {
 	const image = "couchdb:2.3.0"
 	const dbname = "test"
-	if err := Pull(image, 120 * time.Second); err != nil {
+	if err := Pull(image, 120*time.Second); err != nil {
 		fmt.Printf("cannot pull couchdb image=%s err=%s", image, err)
 		os.Exit(1)
 	}
-	url, cleanup := StartCouchDB(image, 30 * time.Second)
-	if err := CreateDB(url, dbname, 10 * time.Second); err != nil {
+	url, cleanup := StartCouchDB(image, 30*time.Second)
+	if err := CreateDB(url, dbname, 10*time.Second); err != nil {
 		fmt.Printf("cannot create test couch database with name=%s err=%s", dbname, err)
 		cleanup()
 		os.Exit(1)
 	}
-	if err := CreateIndices(url, dbname, 10 * time.Second); err != nil {
+	if err := CreateIndices(url, dbname, 10*time.Second); err != nil {
 		fmt.Printf("cannot create couchdb indices: err=%s", err)
 		cleanup()
 		os.Exit(1)
@@ -156,20 +157,23 @@ func TestWriteAndCommitQueryWithRevFilter(t *testing.T) {
 	}
 	create := createCommit(copy(object))
 	assert.NoError(t, s.Write(create))
+
 	object["group"] = "My Favorites"
 	update1 := updateCommit(create.Header.Revision, copy(object))
 	assert.NoError(t, s.Write(update1))
+
 	object["genre"] = "HardRock"
 	update2 := updateCommit(create.Header.Revision, copy(object))
 	assert.NoError(t, s.Write(update2))
+
 	commits, _, err := s.CommitQuery(
 		create.Header.Revision,
-		&collection.Filter{Revs: []string{update1.Header.Revision, update2.Header.Revision}},
+		&collection.Filter{
+			Oids: []string{create.Header.Revision}},
 		&db.Paging{})
 	assert.NoError(t, err)
-	assert.NotContains(t, commits, create)
 	assert.Contains(t, commits, update1)
-	assert.Contains(t, commits, update1)
+	assert.Contains(t, commits, update2)
 }
 
 func TestObjectQueryPaging(t *testing.T) {
@@ -336,7 +340,7 @@ func encodeCommitProtected(protected *models.Protected) string {
 	if err != nil {
 		panic(err)
 	}
-	protectedEncoded := encoding(protectedBytes)
+	protectedEncoded := base64.StdEncoding.EncodeToString(protectedBytes)
 
 	return protectedEncoded
 }
@@ -409,12 +413,12 @@ func createCommit(payload map[string]interface{}) *models.Commit {
 	if err != nil {
 		panic(err)
 	}
-	commit.Protected = encoding(updatedBytes)
+	commit.Protected = base64.StdEncoding.EncodeToString(updatedBytes)
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		panic(err)
 	}
-	encodedPayload := encoding(payloadBytes)
+	encodedPayload := base64.StdEncoding.EncodeToString(payloadBytes)
 	commit.Payload = encodedPayload
 	return commit
 }
@@ -425,7 +429,7 @@ func createWrongCommit() *models.Commit {
 	if err != nil {
 		panic(err)
 	}
-	commit.Protected = encoding(updatedBytes)
+	commit.Protected = base64.StdEncoding.EncodeToString(updatedBytes)
 	return commit
 }
 func updateCommit(objID string, payload map[string]interface{}) *models.Commit {
@@ -437,32 +441,38 @@ func updateCommit(objID string, payload map[string]interface{}) *models.Commit {
 	if err != nil {
 		panic(err)
 	}
-	commit.Protected = encoding(updatedBytes)
+	commit.Protected = base64.StdEncoding.EncodeToString(updatedBytes)
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		panic(err)
 	}
-	encodedPayload := encoding(payloadBytes)
+	encodedPayload := base64.StdEncoding.EncodeToString(payloadBytes)
 	commit.Payload = encodedPayload
 	return commit
 }
 
 func commit() *models.Commit {
-	protected := fmt.Sprintf(`{
-		    "interface": "Collections",
-			"context": "http://schema.org",
-			"type": "MusicPlaylist",
-			"committed_at": "%s",
-			"commit_strategy": "basic",
-			"sub": "did:example:abc123",
-			"kid": "did:example:123456#key-abc",
-			"meta": {
-			"name": "Sample playlist"
-		}
-	}`, time.Now().String())
+
+	protected := &models.Protected{
+		Interface:      "Collections",
+		Context:        "http://schema.org",
+		Type:           "MusicPlaylist",
+		CommittedAt:    time.Now().String(),
+		CommitStrategy: "basic",
+		Sub:            "did:example:abc123",
+		Kid:            "did:example:123456#key-abc",
+		Meta: &models.Meta{
+			Name: "Sample playlist",
+		},
+	}
+
+	protectedBytes, err := json.Marshal(protected)
+	if err != nil {
+		panic(err)
+	}
 	return &models.Commit{
-		Protected: encoding([]byte(protected)),
+		Protected: base64.StdEncoding.EncodeToString(protectedBytes),
 		Header: &models.Header{
 			Revision: randomString(),
 			Iss:      "did:example:123456",
@@ -492,7 +502,4 @@ func decodeProtected(protected string) *models.Protected {
 		panic(err)
 	}
 	return protected1
-}
-func encoding(input []byte) string {
-	return base64.StdEncoding.EncodeToString(input)
 }
