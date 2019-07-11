@@ -39,6 +39,18 @@ type Header struct {
 	Iss      string `json:"iss"`
 }
 
+//Request defines the request structure for hub-store
+type Request struct {
+	Context  string `json:"@context"`
+	Type     string `json:"@type"`
+	Issuer   string `json:"iss"`
+	Subject  string `json:"sub"`
+	Audience string `json:"aud"`
+	*CommitRequest
+	*CommitQuery
+	*ObjectQuery
+}
+
 // Commit gives the actual user data
 type Commit struct {
 	Protected string  `json:"protected"`
@@ -47,15 +59,19 @@ type Commit struct {
 	Signature string  `json:"signature"`
 }
 
-// Request is the overall request of the user
-type Request struct {
-	Context  string              `json:"@context"`
-	Type     string              `json:"@type"`
-	Issuer   string              `json:"iss"`
-	Subject  string              `json:"sub"`
-	Audience string              `json:"aud"`
-	Commit   *Commit             `json:"commit"`
-	Query    *CommitQueryRequest `json:"query"`
+//CommitRequest defines the write commit struct of a request
+type CommitRequest struct {
+	Commit *Commit `json:"commit"`
+}
+
+// CommitQuery defines the query struct for commit query
+type CommitQuery struct {
+	CommitQueryRequest *CommitQueryRequest
+}
+
+//ObjectQuery defines the query struct for object query
+type ObjectQuery struct {
+	ObjectQueryRequest *ObjectQueryRequest
 }
 
 // CommitQueryRequest defines the struct to send the query to the collection store
@@ -65,10 +81,33 @@ type CommitQueryRequest struct {
 	SkipToken string   `json:"skip_token,omitempty"`
 }
 
+// ObjectQueryRequest defines the struct to send object query to collection store
+type ObjectQueryRequest struct {
+	Context   string    `json:"context"`
+	Filters   []*Filter `json:"filters"`
+	Interface string    `json:"interface"`
+	ObjectID  []string  `json:"object_id"`
+	SkipToken string    `json:"skip_token,omitempty"`
+	Type      string    `json:"type"`
+}
+
+// ObjectMetadata defines the object metadata structure which will serve as response for object query
+type ObjectMetadata struct {
+	CommitStrategy string `json:"commit_strategy"`
+	Context        string `json:"context"`
+	CreatedAt      string `json:"created_at"`
+	CreatedBy      string `json:"created_by"`
+	ID             string `json:"id"`
+	Interface      string `json:"interface"`
+	Sub            string `json:"sub"`
+	Type           string `json:"type"`
+}
+
 // Response encapsulates different type of responses. For example: write Response CommitQuery Response etc
 type Response struct {
 	*WriteResponse
 	*CommitQueryResponse
+	*ObjectQueryResponse
 }
 
 // CommitQueryResponse commit query response
@@ -83,6 +122,13 @@ type WriteResponse struct {
 	BaseResponse
 	Revisions []string `json:"revisions"`
 	SkipToken string   `json:"skip_token,omitempty"`
+}
+
+// ObjectQueryResponse defines the response struct for  the object query
+type ObjectQueryResponse struct {
+	BaseResponse
+	Objects   []*ObjectMetadata `json:"objects"`
+	SkipToken string            `json:"skip_token,omitempty"`
 }
 
 // BaseResponse defines the common parameters used by all different types of response.

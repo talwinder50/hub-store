@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package collection
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -23,7 +25,10 @@ func ServiceRequest(config *server.Config, request *models.Request) (*models.Res
 	case "WriteRequest":
 		return doWrite(config, request.Commit)
 	case "CommitQueryRequest":
-		return doCommitQuery(config, request.Query)
+		return doCommitQuery(config, request.CommitQueryRequest)
+	case "ObjectQueryRequest":
+		return doObjectQuery(config, request.ObjectQueryRequest)
+
 	default:
 		return nil, badRequest("unsupported request type", request.Type)
 	}
@@ -77,6 +82,74 @@ func doCommitQuery(config *server.Config, req *models.CommitQueryRequest) (*mode
 	return response, nil
 }
 
+func doObjectQuery(config *server.Config, req *models.ObjectQueryRequest) (*models.Response, *models.ErrorResponse) {
+
+	commits, token, err := config.CollectionStore.ObjectQuery(
+		req.Interface, req.Context, req.Type,
+		&collection.Filter{
+			Oids:            req.ObjectID,
+			MetadataFilters: req.Filters,
+		},
+		&db.Paging{
+			Size:      config.PageSize,
+			SkipToken: req.SkipToken,
+		},
+	)
+	if err != nil {
+		var errResp *models.ErrorResponse
+		msg := fmt.Sprintf("failed to execute ObjectQuery against store: %s", err)
+		log.Error(msg)
+		switch err.(type) {
+		case *collection.ErrUnsupportedFilter:
+			errResp = badRequest(
+				fmt.Sprintf("invalid filters: %s", err),
+				"query.filters",
+			)
+		default:
+			errResp = serverError(msg)
+		}
+		return nil, errResp
+	}
+
+	metadata := make([]*models.ObjectMetadata, 0)
+	for _, commit := range commits {
+		oid, err := internal.ObjectID(commit)
+		if err != nil {
+			return nil, serverError(err.Error())
+		}
+		commitProtected, e := decodeProtected(commit.Protected)
+		if e != nil {
+			return nil, e
+		}
+		metadata = append(metadata, &models.ObjectMetadata{
+			Interface:      commitProtected.Interface,
+			Context:        commitProtected.Context,
+			Type:           commitProtected.Type,
+			ID:             oid,
+			CommitStrategy: commitProtected.CommitStrategy,
+			Sub:            commitProtected.Sub,
+			CreatedAt:      commitProtected.CommittedAt,
+			CreatedBy:      commit.Header.Iss,
+		})
+	}
+	oq := objectQueryResponse(metadata, token)
+	response := &models.Response{ObjectQueryResponse: oq}
+	return response, nil
+}
+
+func decodeProtected(input string) (*models.Protected, *models.ErrorResponse) {
+	commitProtected := &models.Protected{}
+	decodeBytes, err := base64.StdEncoding.DecodeString(input)
+	if err != nil {
+		return nil, serverError(err.Error())
+	}
+	err = json.Unmarshal(decodeBytes, commitProtected)
+	if err != nil {
+		return nil, serverError(err.Error())
+	}
+	return commitProtected, nil
+}
+
 // "bad_request" error response
 func badRequest(msg string, target string) *models.ErrorResponse {
 	return errResponse(msg, "bad_request", target)
@@ -105,6 +178,17 @@ func commitQueryResponse(commits []*models.Commit, token string) *models.CommitQ
 			AtType:                "CommitQueryResponse",
 			DeveloperMessageField: ""},
 		Commits:   commits,
+		SkipToken: token}
+}
+
+func objectQueryResponse(objects []*models.ObjectMetadata, token string) *models.ObjectQueryResponse {
+	var context = "https://schema.identity.foundation/0.1"
+	return &models.ObjectQueryResponse{
+		BaseResponse: models.BaseResponse{
+			AtContextField:        context,
+			AtType:                "ObjectQueryResponse",
+			DeveloperMessageField: ""},
+		Objects:   objects,
 		SkipToken: token}
 }
 
