@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -28,15 +29,27 @@ import (
 var s collection.Store
 
 func TestMain(m *testing.M) {
+	const image = "couchdb:2.3.0"
 	const dbname = "test"
-	url, cleanup := StartCouchDB(dbname)
-	defer cleanup()
-	err := WaitForCouchDbStartup(url, dbname)
-	if err != nil {
-		panic(err)
+	if err := Pull(image, 120 * time.Second); err != nil {
+		fmt.Printf("cannot pull couchdb image=%s err=%s", image, err)
+		os.Exit(1)
 	}
-	cfg := &Config{URL: url, DBName: dbname}
-	s = Store(cfg)
+	url, cleanup := StartCouchDB(image, 30 * time.Second)
+	if err := CreateDB(url, dbname, 10 * time.Second); err != nil {
+		fmt.Printf("cannot create test couch database with name=%s err=%s", dbname, err)
+		cleanup()
+		os.Exit(1)
+	}
+	if err := CreateIndices(url, dbname, 10 * time.Second); err != nil {
+		fmt.Printf("cannot create couchdb indices: err=%s", err)
+		cleanup()
+		os.Exit(1)
+	}
+	s = Store(&Config{URL: url, DBName: dbname})
+	code := m.Run()
+	cleanup()
+	os.Exit(code)
 }
 func TestStorePanicsURL(t *testing.T) {
 	cfg := &Config{URL: "", DBName: "invalid"}
