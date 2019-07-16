@@ -40,6 +40,11 @@ func ParsePublicKey(data []byte) (interface{}, error) {
 		return pub, nil
 	}
 
+	cert, err1 := x509.ParseCertificate(input)
+	if err1 == nil {
+		return cert, nil
+	}
+
 	return nil, fmt.Errorf("square/go-jose: parse error: '%s'", err)
 }
 

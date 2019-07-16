@@ -23,7 +23,7 @@ import (
 )
 
 func TestCreateNewAccessToken(t *testing.T) {
-	ecdsaKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
+	ecdsaKey := getPrivateKeyFromFile("../../test/fixtures/keys/tls/ec-key.pem")
 	_, err := createNewAccessToken("p6OLLpeRafCWbOAEYpuGVTKNkcq8l", "subject", ecdsaKey)
 	require.NoError(t, err)
 }
@@ -36,7 +36,7 @@ func TestCreateNewAccessTokenWithNilKey(t *testing.T) {
 }
 
 func TestValidateAccessToken(t *testing.T) {
-	ecdsaKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
+	ecdsaKey := getPrivateKeyFromFile("../../test/fixtures/keys/tls/ec-key.pem")
 	tok, err := createNewAccessToken("p6OLLpeRafCWbOAEYpuGVTKNkcq8l", "subject", ecdsaKey)
 	require.NoError(t, err)
 	authJWT, parseErr := jwt.ParseSigned(tok)
@@ -46,7 +46,7 @@ func TestValidateAccessToken(t *testing.T) {
 }
 
 func TestValidateAccessTokenWithWrongIssuer(t *testing.T) {
-	ecdsaKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
+	ecdsaKey := getPrivateKeyFromFile("../../test/fixtures/keys/tls/ec-key.pem")
 	key := jose.SigningKey{Algorithm: jose.ES256, Key: ecdsaKey}
 	var signerOpts = jose.SignerOptions{NonceSource: staticNonceSource("nonce")} // using passed in nonce
 	signer, err := jose.NewSigner(key, signerOpts.WithType("JWT"))
@@ -74,13 +74,13 @@ func TestValidateAccessTokenWithWrongIssuer(t *testing.T) {
 }
 
 func TestValidateAccessTokenWithWrongKey(t *testing.T) {
-	ecdsaKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
+	ecdsaKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
 	tok, err := createNewAccessToken("p6OLLpeRafCWbOAEYpuGVTKNkcq8l", "subject", ecdsaKey)
 	require.NoError(t, err)
 	authJWT, parseErr := jwt.ParseSigned(tok)
 	require.NoError(t, parseErr)
 
-	ecdsaKey = getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	ecdsaKey = getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 	err = validateAccessToken(authJWT, ecdsaKey, "subject")
 	require.Error(t, err)
 	require.Equal(t, "square/go-jose: error in cryptographic primitive", err.Error())
@@ -115,8 +115,8 @@ func TestValidateJWSHeader(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := "p6OLLpeRafCWbOAEYpuGVTKNkcq8l"
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	didAccessToken, err := createNewAccessToken(nonce, kid, serverKey)
 	require.NoError(t, err)
@@ -133,8 +133,8 @@ func TestValidateJWSHeaderWithInvalidKey(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := "p6OLLpeRafCWbOAEYpuGVTKNkcq8l"
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	didAccessToken, err := createNewAccessToken(nonce, kid, serverKey)
 	require.NoError(t, err)
@@ -152,8 +152,8 @@ func TestValidateJWSHeaderWithEmptyNonce(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := ""
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	didAccessToken, err := createNewAccessToken(nonce, kid, serverKey)
 	require.NoError(t, err)
@@ -171,8 +171,8 @@ func TestValidateJWS(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := "p6OLLpeRafCWbOAEYpuGVTKNkcq8l"
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	didAccessToken, err := createNewAccessToken(nonce, kid, serverKey)
 	require.NoError(t, err)
@@ -194,8 +194,8 @@ func TestValidateJWSWithoutAccessToken(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := "p6OLLpeRafCWbOAEYpuGVTKNkcq8l"
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	jwsMsg := generateValidJWS(kid, nonce, "", clientKey)
 
@@ -213,8 +213,8 @@ func TestValidateJWSWithWrongAccessToken(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := "p6OLLpeRafCWbOAEYpuGVTKNkcq8l"
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	didAccessToken, err := createNewAccessToken(nonce, kid, serverKey)
 	require.NoError(t, err)
@@ -237,8 +237,8 @@ func TestValidateJWSWithWrongTime(t *testing.T) {
 	kid := "did:example:123456789abcdefghi#keys-1"
 	nonce := "p6OLLpeRafCWbOAEYpuGVTKNkcq8l"
 
-	serverKey := getPrivateKeyFromFile("../../tests/keys/did-server/ec-key.pem")
-	clientKey := getPrivateKeyFromFile("../../tests/keys/did-client/ec-key.pem")
+	serverKey := getPrivateKeyFromFile("../../test/fixtures/keys/server/ec-key.pem")
+	clientKey := getPrivateKeyFromFile("../../test/fixtures/keys/client/ec-key.pem")
 
 	didAccessToken, err := createNewAccessTokenWithExpiredTime(nonce, kid, serverKey)
 	require.NoError(t, err)
