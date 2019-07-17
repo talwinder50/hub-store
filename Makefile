@@ -20,6 +20,14 @@
 GO_CMD ?= go
 export GO111MODULE=on
 
+# This Makefile assumes a working Golang and Docker setup
+ALPINE_VER ?= 3.9
+GO_VER             = $(shell grep "GO_VER" .ci-properties |cut -d'=' -f2-)
+
+
+# Namespace for the hub store
+DOCKER_OUTPUT_NS          ?= trustbloc
+HUB_STORE_IMAGE_NAME  ?= hub-store
 
 #couchdb image parameters
 #this couchdb image contains startup scripts that autorun and create all necessary db artifacts
@@ -48,13 +56,36 @@ lint:
 checks: build license lint
 
 generate-test-keys: clean
-	@mkdir -p -p test/fixtures/keys/tls
+	@mkdir -p test/fixtures/keys/tls
 	@docker run -i --rm \
 		-v $(abspath .):/opt/go/src/github.com/trustbloc/hub-store \
 		--entrypoint "/opt/go/src/github.com/trustbloc/hub-store/scripts/generate_test_keys.sh" \
 		frapsoft/openssl
 
-clean:
-	rm -Rf ./test
+all: checks unit-test bddtests
 
-all: checks unit-test
+hub-store:
+	@echo "Building hub-store"
+	@mkdir -p ./.build/bin
+	@go build -o ./.build/bin/hub-store cmd/hub-store/main.go
+
+hubstore-docker: hub-store
+	@docker build -f ./images/hub-store/Dockerfile --no-cache -t $(DOCKER_OUTPUT_NS)/$(HUB_STORE_IMAGE_NAME):latest \
+	--build-arg GO_VER=$(GO_VER) \
+	--build-arg ALPINE_VER=$(ALPINE_VER) \
+	--build-arg GO_TAGS=$(GO_TAGS) \
+	--build-arg GOPROXY=$(GOPROXY) .
+
+bddtests: clean checks generate-test-keys hubstore-docker
+	@scripts/integration.sh
+
+generate-test-keys: clean
+	@mkdir -p test/bddtests/fixtures/keys/tls
+	@docker run -i --rm \
+		-v $(abspath .):/opt/go/src/github.com/trustbloc/hub-store \
+		--entrypoint "/opt/go/src/github.com/trustbloc/hub-store/scripts/generate_test_keys.sh" \
+		frapsoft/openssl
+clean:
+	rm -Rf ./.build
+	rm -Rf ./test/bddtests/docker-compose.log
+	rm -Rf ./test/bddtests/fixtures/keys

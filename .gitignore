@@ -19,3 +19,4 @@ vendor
 docs/build
 bin
 coverage.txt
+test/fixtures/keys

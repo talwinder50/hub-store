@@ -1,0 +1,14 @@
+#
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
+# Release Parameters
+BASE_VERSION=0.1.0
+IS_RELEASE=false
+
+GO_VER=1.12.5
+GO_MIN_VER=1.12
+GO_MAX_VER=1.12.5
