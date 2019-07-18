@@ -77,8 +77,11 @@ func (c *couchDBClient) Write(commit *models.Commit) error {
 	if e != nil {
 		return e
 	}
-	oid, _ := internal.ObjectID(commit)
-	_, _, err := c.db.CreateDoc(
+	oid, err := internal.ObjectID(commit)
+	if err != nil {
+		return err
+	}
+	_, _, err = c.db.CreateDoc(
 		context.TODO(),
 		&envelope{
 			ObjectID:  oid,
