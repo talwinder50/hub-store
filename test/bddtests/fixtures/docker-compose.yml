@@ -1,0 +1,22 @@
+
+#
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+services:
+
+  hubstore:
+    container_name: hub-store
+    image: ${TRUSTBLOCK_NS}/${HUB_STORE_FIXTURE_IMAGE}:latest
+    environment:
+      - HUB_STORE_NODE_TLS_CERTIFICATE=/etc/hub-store/tls/ec-pubCert.pem
+      - HUB_STORE_NODE_TLS_KEY=/etc/hub-store/tls/ec-key.pem
+      - HUB_STORE_NODE_HOST=0.0.0.0
+      - HUB_STORE_NODE_PORT=48326
+    ports:
+      - 48326:48326
+    volumes:
+      - ./keys/tls:/etc/hub-store/tls
