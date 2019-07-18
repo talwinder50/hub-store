@@ -30,13 +30,8 @@ export PKGS=`go list github.com/trustbloc/hub-store/... `
 build:
 	go build -o bin/hubstore cmd/hub-store/main.go
 
-//TODO: Pull the couchdb image directly , dont build the image to run the test
-docker:
-	@docker build --no-cache --tag $(HUB_STORE_COUCHDB_IMAGE) \
-	./scripts/couchdb
-
 //TODO : Separate the couchdb test (which are dependant on external dependencies ) as integration test
-unit-test: generate-test-keys docker
+unit-test: generate-test-keys
 	go test -count=1 $(PKGS) -timeout=10m -coverprofile=coverage.txt -covermode=atomic ./...
 
 license:

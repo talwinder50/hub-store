@@ -7,39 +7,52 @@ SPDX-License-Identifier: Apache-2.0
 package couchdb
 
 import (
+	"context"
 	"fmt"
-	"os"
+	"strings"
 	"time"
 
-	"net/http"
-
 	_ "github.com/go-kivik/couchdb" // The CouchDB driver
+	"github.com/go-kivik/kivik"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/thedevsaddam/gojsonq"
 )
 
-func couchdbImageName() string {
-	return os.Getenv("HUB_STORE_COUCHDB_IMAGE")
+func Pull(image string, timeout time.Duration) error {
+	client, err := docker.NewClientFromEnv()
+	if err != nil {
+		return errors.Wrap(err, "cannot create docker client")
+	}
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	err = client.PullImage(
+		docker.PullImageOptions{
+			Context: ctx,
+			Repository: strings.Replace(image, ":", "@", 1),
+		},
+		docker.AuthConfiguration{},
+	)
+	if err != nil {
+		return errors.Wrapf(err, "cannot pull image %s", image)
+	}
+	return nil
 }
 
-// StartCouchDB starts a CouchDB test instance and returns its address.
+// StartCouchDB starts a docker container and returns its address.
 // Use the cleanup function to stop it.
-func StartCouchDB(dbname string) (address string, cleanup func()) {
+func StartCouchDB(image string, timeout time.Duration) (address string, cleanup func()) {
 	dockerClient, err := docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)
 	}
 	cdb := &couchDB{
 		Name:          uuid.New().String(),
-		Image:         couchdbImageName(),
+		Image:         image,
 		HostIP:        "127.0.0.1",
 		ContainerPort: docker.Port("5984/tcp"),
-		StartTimeout:  60 * time.Second,
+		StartTimeout:  timeout,
 		Client:        dockerClient,
-		Env:           []string{"COUCHDB_DBNAME=" + dbname},
 	}
 	if err := cdb.Start(); err != nil {
 		fmtErr := fmt.Errorf("failed to start couchDB: %s", err)
@@ -53,44 +66,58 @@ func StartCouchDB(dbname string) (address string, cleanup func()) {
 	}
 }
 
-// WaitForCouchDbStartup waits for the CouchDB docker container to start up
-// Our test CouchDB docker container starts up quickly but takes a few seconds to finish configuring
-// itself. We want to avoid running the tests before CouchDB is ready.
-// This function tries to ping the CouchDB hosted at the given URL a few times, returning an error
-// for any connectivity issue or if the maximum timeout was reached.
-func WaitForCouchDbStartup(couchDbURL, couchDbName string) error {
-	indexes := []string{"commitquery", "objectquery", "grants"}
-	const timeout = 60 * time.Second
-	limit := time.Now().Add(timeout)
-	indexStatus := make([]bool, len(indexes))
-	for time.Now().Before(limit) && !logicalAnd(indexStatus) {
-		resp, err := http.Get(fmt.Sprintf("http://%s/%s/_index", couchDbURL, couchDbName))
-		if err != nil {
-			return errors.Wrapf(err, "error pinging CouchDB test url: %s", couchDbURL)
-		}
-		json := gojsonq.New().Reader(resp.Body)
-		if err := resp.Body.Close(); err != nil {
-			return errors.Wrapf(err, "failed to close http response from CouchDB")
-		}
-		for i, index := range indexes {
-			indexStatus[i] = json.From("indexes").Where("name", "=", index).Get() != nil
-			json.Reset()
-		}
-		time.Sleep(1 * time.Second)
-	}
-	if !logicalAnd(indexStatus) {
-		return errors.New("CouchDB startup timed out")
+func CreateDB(couchDbUrl, couchDbName string, timeout time.Duration) error {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	client, err := cdbClient(couchDbUrl, ctx)
+	_, err = client.CreateDB(ctx, couchDbName)
+	if err != nil {
+		return errors.Wrapf(err, "cannot create couchdb %s", couchDbName)
 	}
 	return nil
 }
 
-func logicalAnd(status []bool) bool {
-	result := true
-	for _, b := range status {
-		if !b {
-			result = false
-			break
-		}
+func CreateIndices(couchDbUrl, couchDbName string, timeout time.Duration) error {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	client, err := cdbClient(couchDbUrl, ctx)
+	if err != nil {
+		return err
 	}
-	return result
+	db, err := client.DB(ctx, couchDbName)
+	if err != nil {
+		return errors.Wrap(err, "cannot obtain handle to couchdb")
+	}
+	err = db.CreateIndex(
+		ctx, "hub", "objectquery",
+		map[string]interface{}{
+			"partial_filter_selector": map[string]string{
+				"commit.protected.operation": "create",
+			},
+			"fields": []string{
+				"commit.protected.interface",
+				"commit.protected.context",
+				"commit.protected.type",
+			},
+		},
+	)
+	if err != nil {
+		return errors.Wrap(err, "cannot create objectquery index")
+	}
+	err = db.CreateIndex(
+		ctx, "hub", "commitquery",
+		map[string]interface{}{
+			"fields":[]string{"objectID"},
+		},
+	)
+	if err != nil {
+		return errors.Wrapf(err, "cannot create commitquery index")
+	}
+	return nil
+}
+
+func cdbClient(url string, ctx context.Context) (*kivik.Client, error) {
+	client, err := kivik.New("couch", url)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot initialize couchdb client")
+	}
+	return client, nil
 }
