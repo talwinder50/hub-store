@@ -13,6 +13,8 @@ import (
 	"io/ioutil"
 )
 
+// TODO when ready, substitute this custom did package with the generic module in hyperledger/aries-framework-go
+
 // Doc is a DID document as defined in the Decentralized Identifiers spec:
 // https://w3c-ccg.github.io/did-spec.
 type Doc struct {
@@ -20,7 +22,6 @@ type Doc struct {
 }
 
 // PublicKey is a key defined in the DID document's 'publicKey' attribute.
-// TODO PublicKey: add support for the various key contents as per the spec (eg. publicKeyPem, publicKeyBase58, etc)
 type PublicKey struct {
 	json map[string]interface{}
 }
